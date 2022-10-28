@@ -1,0 +1,141 @@
+#!/usr/bin/python3
+
+import numpy
+import os
+
+def main():
+    f = open("instance.pddl", "w")
+
+    f.write("(define (problem PPlan)\n")
+    f.write("\n")
+    f.write("    (:domain jobFlowScheduling)\n")
+    f.write("\n")
+    line = input()
+    newLine = line.split()
+    jobs = int(newLine[0])
+    machines = int(newLine[1])
+
+    #Matrix that has the duration of each task from each job in each machine
+    tasksInJob = numpy.zeros(jobs)
+    tasksDuration = numpy.zeros((jobs, machines))
+
+
+    f.write("    (:objects ")
+
+    for i in range(0, machines):
+        f.write("m-" + str(i+1) + " ")
+
+    f.write("- machine\n")
+    f.write("              none ")
+
+    for i in range(1, jobs+1):
+      line = input()
+      newLine = line.split()
+      numberTasks = int(newLine[0])
+      tasksInJob[i-1] = numberTasks
+
+      for j in range(1, numberTasks+1):
+        #Makes the separation of machine:duration
+        newSeparation = newLine[j].split(":")
+        tasksDuration[i-1][int(newSeparation[0])-1] = int(newSeparation[1])
+
+
+    for i in range(0, jobs):
+        for j in range(0, machines):
+            if(tasksDuration[i][j] != 0):
+                for z in range(1, int(tasksDuration[i][j])+1):
+                    f.write("t-" + str(i+1) + "-" + str(j+1)+ "-" + str(z) + " ")
+
+
+
+    f.write("- task)\n")
+    f.write("\n")
+    f.write("    (:init ")
+    #Creates the none tasks
+    for i in range(1, machines+1):
+        f.write("(machineForTask m-" + str(i) + " none)\n")
+        f.write("           ")
+
+    for i in range(0, jobs):
+        for j in range(0, machines):
+            if(tasksDuration[i][j] != 0):
+                for duration in range(1, int(tasksDuration[i][j]+1)):
+                    f.write("(machineForTask m-" + str(j+1) + " t-" + str(i+1) + "-" + str(j+1) + "-" + str(duration) + ")\n")
+                    f.write("           ")
+
+    for i in range(0, jobs):
+        for j in range(0, machines):
+            if(tasksDuration[i][j] > 1):
+                for duration in range(1, int(tasksDuration[i][j])):
+                    f.write("(taskAfter t-" + str(i+1) + "-" + str(j+1) + "-" + str(duration) + " t-" + str(i+1) + "-" + str(j+1) + "-" + str(duration+1) + ")\n")
+                    f.write("           ")
+
+    for i in range(0, jobs):
+        for j in range(0, machines):
+            if(tasksDuration[i][j] != 0):
+                for newMachine in range(j+1, machines):
+                    if(tasksDuration[i][newMachine] != 0):
+                        f.write("(dependsOn t-" + str(i+1) + "-" + str(j+1) + "-" + str(int(tasksDuration[i][j])) + " t-" + str(i+1) + "-" + str(newMachine+1) + "-" + str(1) + ")\n")
+                        f.write("           ")
+                        break
+
+    for i in range (1, machines):
+        f.write("(after m-" + str(i) + " " + "m-" + str(i+1) + ")\n")
+    f.write("           (after m-" + str(machines) + " " + "m-" + str(1) + ")\n")
+    f.write("           (next m-" + str(1) + ")\n")
+
+    f.write("           (= (total-cost) 0))\n")
+    f.write("\n")
+    f.write("    (:goal (forall (?t - task) (or (= ?t none) (done ?t))))\n")
+    f.write("\n")
+    f.write("    (:metric minimize (total-cost))\n")
+    f.write("\n")
+    f.write(")")
+
+    f.close()
+
+    #Run planner
+    os.system('./fast-downward.py proj-domain.pddl instance.pddl --search "eager(single(ff))" >/dev/null')
+
+
+    count = 1
+    startTime = numpy.zeros((jobs, machines))
+
+
+    f = open("sas_plan", "r")
+    line = f.readline()
+
+    while line[0] != ";":
+        newLine = line.split()
+        #print(newLine)
+        if newLine[1] != "none":
+            task1 = newLine[1].split("-")
+            if(int(task1[3]) == 1):
+                startTime[int(task1[1])-1][int(task1[2])-1] = count
+
+        count = count + 1
+        line = f.readline()
+
+    newLine = line.split()
+    rest = int(newLine[3])%machines
+    if rest != 0:
+        makespan = int(newLine[3]) + machines - rest
+    else:
+        makespan = int(newLine[3])
+
+    print(int(makespan/machines))
+    print(jobs, machines)
+    #print(startTime)
+    for i in range (0, jobs):
+        print(int(tasksInJob[i]), end="")
+        for j in range (0, machines):
+            if startTime[i][j] != 0:
+                print(" " + str(j+1) + ":" + str(int((startTime[i][j]-1)/machines)), end="")
+        if i!= jobs-1:
+            print()
+
+    print('\n')
+
+
+if __name__ == "__main__":
+    main()

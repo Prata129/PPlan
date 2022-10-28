@@ -1,0 +1,22 @@
+Search and Planning Project Report MEIC-A 2021/2022
+Tiago Prata Nº86516
+Miguel Gonçalves Nº89507
+
+In this project we were asked to develop a tool that would be able to use a planner and compute the schedule of a Job-Flow problem.
+Our project is composed by a python script and pddl file that contains our domain, and uses the fast-downward planner.
+
+In order to run the planner we need both a domain file and an instance file. The latter is dynamically created according to the input.
+In our python file we start by creating a instance.pddl file that will contain the instance of our problem and there we are going to define the machines, the tasks and a few predicates that are explained further down.
+Having our domain and instance files, we can call the planner in order to obtain a solution for the given instance.
+Since we could have any number of machines, we chose to have a static domain so it would work for any number of machines and jobs.
+
+We make use of several predicates, described as follow:
+- (machineForTask m t): true if task t is to be executed in machine m;
+- (taskAfter t1 t2): true if task t2 must be executed immediately after task t1;
+- (dependsOn t1 t2): true if task t2 must be executed after t1 but not necessarily immediately after;
+- (done t): true if a task has been executed;
+- (previous t m): true if task t was the last task being executed in machine m;
+- (next m): true if machine m is the current machine being processed;
+- (after m1 m2): true if machine m2 is supposed to be processed after machine m1;
+
+Our domain has a single action which takes as parameters a task to be scheduled, the current machine being processed and the next machine to be processed afterwards, and, after checking the task dependencies, schedules the task for this machine and marks it as done.
